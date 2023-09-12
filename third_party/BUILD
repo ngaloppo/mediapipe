@@ -70,7 +70,8 @@ alias(
     visibility = ["//visibility:public"],
 )
 
-load("@rules_foreign_cc//tools/build_defs:cmake.bzl", "cmake_external")
+#load("@rules_foreign_cc//tools/build_defs:cmake.bzl", "cmake_external")
+load("@rules_foreign_cc//foreign_cc:cmake.bzl", "cmake")
 
 # Note: this determines the order in which the libraries are passed to the
 # linker, so if library A depends on library B, library B must come _after_.
@@ -94,7 +95,7 @@ OPENCV_SHARED_LIBS = False
 
 OPENCV_SO_VERSION = "3.4"
 
-cmake_external(
+cmake(
     name = "opencv_cmake",
     # Values to be passed as -Dkey=value on the CMake command line;
     # here are serving to provide some CMake script configuration options
