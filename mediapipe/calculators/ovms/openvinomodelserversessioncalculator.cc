@@ -53,7 +53,7 @@ ov::Core UNUSED_OV_CORE;
         if (err != nullptr) {                                                               \
             uint32_t code = 0;                                                              \
             const char* msg = nullptr;                                                      \
-            ASSERT_CIRCULAR_ERR(OVMS_StatusCode(err, &code));                               \
+            ASSERT_CIRCULAR_ERR(OVMS_StatusGetCode(err, &code));                               \
             ASSERT_CIRCULAR_ERR(OVMS_StatusDetails(err, &msg));                             \
             LOG(INFO) << "Error encountred in OVMSCalculator:" << msg << " code: " << code; \
             OVMS_StatusDelete(err);                                                         \
@@ -67,7 +67,7 @@ ov::Core UNUSED_OV_CORE;
         if (err != nullptr) {                                                               \
             uint32_t code = 0;                                                              \
             const char* msg = nullptr;                                                      \
-            ASSERT_CIRCULAR_ERR(OVMS_StatusCode(err, &code));                               \
+            ASSERT_CIRCULAR_ERR(OVMS_StatusGetCode(err, &code));                               \
             ASSERT_CIRCULAR_ERR(OVMS_StatusDetails(err, &msg));                             \
             LOG(INFO) << "Error encountred in OVMSCalculator:" << msg << " code: " << code; \
             OVMS_StatusDelete(err);                                                         \
