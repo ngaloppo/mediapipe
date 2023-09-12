@@ -37,7 +37,7 @@ cc_library(
         "//mediapipe/framework/port:status",
         "//mediapipe/framework/formats:tensor", # Tensor GetContract
         "@ovms//src:ovms_header",
-        "@model_api//:model_api",
+        "@geti_calculaors//third_party:model_api",
         "@org_tensorflow//tensorflow/lite:framework_stable", # to use tflite
     ],
     copts = ["-Iexternal/ovms/src","-Isrc"],
