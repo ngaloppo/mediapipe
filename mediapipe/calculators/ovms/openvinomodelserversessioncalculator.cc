@@ -181,7 +181,7 @@ public:
                 OVMS_ModelsSettingsNew(&guard.modelsSettings);
                 OVMS_ModelsSettingsSetConfigPath(guard.modelsSettings, options.server_config().c_str());
                 LOG(INFO) << "state config file:" << options.server_config();
-                OVMS_ServerSettingsSetLogLevel(guard.serverSettings, OVMS_LOG_DEBUG);
+                OVMS_ServerSettingsSetLogLevel(guard.serverSettings, OVMS_LOG_INFO);
 
                 ASSERT_CAPI_STATUS_NULL(OVMS_ServerStartFromConfigurationFile(cserver, guard.serverSettings, guard.modelsSettings));
 

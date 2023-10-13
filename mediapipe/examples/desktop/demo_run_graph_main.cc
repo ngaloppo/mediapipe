@@ -42,6 +42,35 @@ ABSL_FLAG(std::string, output_video_path, "",
           "Full path of where to save result (.mp4 only). "
           "If not provided, show result in a window.");
 
+absl::Status ProcessOutputPackets(std::vector<mediapipe::Packet>& packets, int fps) {
+  cv::VideoWriter writer;
+
+  LOG(INFO) << "Processing " << packets.size() << " packets...";
+
+  for (auto& packet : packets) {
+
+      auto& output_frame = packet.Get<mediapipe::ImageFrame>();
+
+      // Convert back to opencv for saving.
+      cv::Mat output_frame_mat = mediapipe::formats::MatView(&output_frame);
+      cv::cvtColor(output_frame_mat, output_frame_mat, cv::COLOR_RGB2BGR);
+
+      if (!writer.isOpened()) {
+	LOG(INFO) << "Prepare video writer.";
+	writer.open(absl::GetFlag(FLAGS_output_video_path),
+	    mediapipe::fourcc('a', 'v', 'c', '1'),  // .mp4
+	    fps, output_frame_mat.size());
+	if (!writer.isOpened()) {
+	return absl::InternalError("Can't open video writer");
+	}
+      }
+      writer.write(output_frame_mat);
+  };
+
+  if (writer.isOpened()) writer.release();
+  return absl::OkStatus();
+}
+
 absl::Status RunMPPGraph() {
   std::string calculator_graph_config_contents;
   MP_RETURN_IF_ERROR(mediapipe::file::GetContents(
@@ -67,20 +96,13 @@ absl::Status RunMPPGraph() {
   }
   RET_CHECK(capture.isOpened());
 
-  cv::VideoWriter writer;
-  const bool save_video = !absl::GetFlag(FLAGS_output_video_path).empty();
-  if (!save_video) {
-    cv::namedWindow(kWindowName, /*flags=WINDOW_AUTOSIZE*/ 1);
-#if (CV_MAJOR_VERSION >= 3) && (CV_MINOR_VERSION >= 2)
-    capture.set(cv::CAP_PROP_FRAME_WIDTH, 640);
-    capture.set(cv::CAP_PROP_FRAME_HEIGHT, 480);
-    capture.set(cv::CAP_PROP_FPS, 30);
-#endif
-  }
-
   LOG(INFO) << "Start running the calculator graph.";
-  ASSIGN_OR_RETURN(mediapipe::OutputStreamPoller poller,
-                   graph.AddOutputStreamPoller(kOutputStream));
+  std::vector<mediapipe::Packet> output_packets;
+  absl::Status graph_status = graph.ObserveOutputStream(kOutputStream, [&](const mediapipe::Packet& packet) {
+			  output_packets.push_back(packet);
+			  return absl::OkStatus();
+			  });
+  
   MP_RETURN_IF_ERROR(graph.StartRun({}));
 
   LOG(INFO) << "Start grabbing and processing frames.";
@@ -120,31 +142,12 @@ absl::Status RunMPPGraph() {
     MP_RETURN_IF_ERROR(graph.AddPacketToInputStream(
         kInputStream, mediapipe::Adopt(input_frame.release())
                           .At(mediapipe::Timestamp(frame_timestamp_us))));
-
-    // Get the graph result packet, or stop if that fails.
-    mediapipe::Packet packet;
-    if (!poller.Next(&packet)) break;
-    auto& output_frame = packet.Get<mediapipe::ImageFrame>();
-
-    // Convert back to opencv for display or saving.
-    cv::Mat output_frame_mat = mediapipe::formats::MatView(&output_frame);
-    cv::cvtColor(output_frame_mat, output_frame_mat, cv::COLOR_RGB2BGR);
-    if (save_video) {
-      if (!writer.isOpened()) {
-        LOG(INFO) << "Prepare video writer.";
-        writer.open(absl::GetFlag(FLAGS_output_video_path),
-                    mediapipe::fourcc('a', 'v', 'c', '1'),  // .mp4
-                    capture.get(cv::CAP_PROP_FPS), output_frame_mat.size());
-        RET_CHECK(writer.isOpened());
-      }
-      writer.write(output_frame_mat);
-    } else {
-      cv::imshow(kWindowName, output_frame_mat);
-      // Press any key to exit.
-      const int pressed_key = cv::waitKey(5);
-      if (pressed_key >= 0 && pressed_key != 255) grab_frames = false;
-    }
   }
+
+  MP_RETURN_IF_ERROR(graph.CloseInputStream(kInputStream));
+// absl::Status status = graph.WaitUntilDone();
+  absl::Status status = graph.WaitUntilIdle();
+
   auto duration = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - begin);
   auto totalTime = duration.count();
   float avgFps = (1000000 * (float)(count_frames) / (float)totalTime);
@@ -152,9 +155,13 @@ absl::Status RunMPPGraph() {
 
   LOG(INFO) << "Frames:" << count_frames << ", Duration [ms]:" << totalTime / 1000 << ", FPS:" << avgFps << ", Avg latency [ms]:" << avgLatencyms;   
   LOG(INFO) << "Shutting down.";
-  if (writer.isOpened()) writer.release();
-  MP_RETURN_IF_ERROR(graph.CloseInputStream(kInputStream));
-  return graph.WaitUntilDone();
+
+  const bool save_video = !absl::GetFlag(FLAGS_output_video_path).empty();
+  if (save_video) {
+    int fps = capture.get(cv::CAP_PROP_FPS);
+    ProcessOutputPackets(output_packets, fps);
+  }
+  return status;
 }
 
 int main(int argc, char** argv) {

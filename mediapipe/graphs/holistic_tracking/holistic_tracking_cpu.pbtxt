@@ -16,29 +16,29 @@ output_stream: "output_video"
 # real-time mobile applications. It also eliminates unnecessarily computation,
 # e.g., the output produced by a node may get dropped downstream if the
 # subsequent nodes are still busy processing previous inputs.
-node {
-  calculator: "FlowLimiterCalculator"
-  input_stream: "input_video"
-  input_stream: "FINISHED:output_video"
-  input_stream_info: {
-    tag_index: "FINISHED"
-    back_edge: true
-  }
-  output_stream: "throttled_input_video"
-  node_options: {
-    [type.googleapis.com/mediapipe.FlowLimiterCalculatorOptions] {
-      max_in_flight: 1
-      max_in_queue: 1
-      # Timeout is disabled (set to 0) as first frame processing can take more
-      # than 1 second.
-      in_flight_timeout: 0
-    }
-  }
-}
+#node {
+#  calculator: "FlowLimiterCalculator"
+#  input_stream: "input_video"
+#  input_stream: "FINISHED:output_video"
+#  input_stream_info: {
+#    tag_index: "FINISHED"
+#    back_edge: true
+#  }
+#  output_stream: "throttled_input_video"
+#  node_options: {
+#    [type.googleapis.com/mediapipe.FlowLimiterCalculatorOptions] {
+#      max_in_flight: 1
+#      max_in_queue: 1
+#      # Timeout is disabled (set to 0) as first frame processing can take more
+#      # than 1 second.
+#      in_flight_timeout: 0
+#    }
+#  }
+#}
 
 node {
   calculator: "HolisticLandmarkCpu"
-  input_stream: "IMAGE:throttled_input_video"
+  input_stream: "IMAGE:input_video"
   output_stream: "POSE_LANDMARKS:pose_landmarks"
   output_stream: "POSE_ROI:pose_roi"
   output_stream: "POSE_DETECTION:pose_detection"
@@ -50,7 +50,7 @@ node {
 # Gets image size.
 node {
   calculator: "ImagePropertiesCalculator"
-  input_stream: "IMAGE:throttled_input_video"
+  input_stream: "IMAGE:input_video"
   output_stream: "SIZE:image_size"
 }
 
@@ -69,7 +69,7 @@ node {
 # Draws annotations and overlays them on top of the input images.
 node {
   calculator: "AnnotationOverlayCalculator"
-  input_stream: "IMAGE:throttled_input_video"
+  input_stream: "IMAGE:input_video"
   input_stream: "VECTOR:render_data_vector"
   output_stream: "IMAGE:output_video"
 }
